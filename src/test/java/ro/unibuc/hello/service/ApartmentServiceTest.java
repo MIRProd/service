@@ -402,8 +402,7 @@ class ApartmentServiceTest {
 
         assertEquals(0, result.size());
     }
-    // ... (codul existent rămâne neschimbat)
-
+  
     // Teste suplimentare pentru getApartmentsByPriceAndSquareMeters
     @Test
     void getApartmentsByPriceAndSquareMeters_InvalidMinSquareMeters() {
@@ -483,7 +482,7 @@ class ApartmentServiceTest {
     @Test
     void getApartmentsByLocation_SuccessWithDiacritics() {
         List<ApartmentEntity> locations = Collections.singletonList(luxuryApartment);
-        // După normalizare, "București" devine "bucuresti"
+        // "București" devine "bucuresti"
         when(apartmentRepository.findByLocationIgnoreCase("bucuresti")).thenReturn(locations);
 
         List<ApartmentEntity> result = apartmentService.getApartmentsByLocation("București");

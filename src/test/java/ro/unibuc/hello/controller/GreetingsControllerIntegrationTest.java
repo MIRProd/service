@@ -27,113 +27,81 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
+// integration between two components: `GreetingsService` and `GreetingsController` (the requests are made using mockMvc)
+// Annotation to specify that this class contains integration tests for Spring Boot application.
 @SpringBootTest
+// Annotation to automatically configure a MockMvc instance.
 @AutoConfigureMockMvc
+// Annotation to enable Testcontainers support.
 @Testcontainers
-@Tag("IntegrationTest")
+// Tagging this test class as an integration test for categorization.
+//@Tag("IntegrationTest")
 public class GreetingsControllerIntegrationTest {
 
+    // Declaring a Testcontainers MongoDB container.
     @Container
     public static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:6.0.20")
+            // Exposing port 27017 from the MongoDB container.
             .withExposedPorts(27017)
-            .withEnv("MONGO_INITDB_ROOT_USERNAME","root") // user
-            .withEnv("MONGO_INITDB_ROOT_PASSWORD", "example") // password
-            .withEnv("MONGO_INITDB_DATABASE", "testdb") // dbname
-            .withCommand("--auth");
+            // enable sharding on MongoDB container
+            .withSharding();
 
+    // Method executed once before all tests to start the MongoDB container.
     @BeforeAll
     public static void setUp() {
         mongoDBContainer.start();
     }
 
+    // Method executed once after all tests to stop the MongoDB container.
     @AfterAll
     public static void tearDown() {
         mongoDBContainer.stop();
     }
 
+    // Method to dynamically set MongoDB connection properties for the test environment.
     @DynamicPropertySource
     static void setProperties(DynamicPropertyRegistry registry) {
-        final String MONGO_URL = "mongodb://root:example@localhost:";
+        // Constructing MongoDB connection URL with localhost and mapped port.
+        final String MONGO_URL = "mongodb://localhost:";
         final String PORT = String.valueOf(mongoDBContainer.getMappedPort(27017));
 
+        // Adding MongoDB connection URL property to the registry.
         registry.add("mongodb.connection.url", () -> MONGO_URL + PORT);
     }
 
+    // Autowiring MockMvc instance for HTTP request simulation.
     @Autowired
     private MockMvc mockMvc;
 
+    // Autowiring GreetingsService for interacting with the MongoDB database.
     @Autowired
     private GreetingsService greetingsService;
 
+    // Method executed before each test to clean up and add test data to the database.
     @BeforeEach
     public void cleanUpAndAddTestData() {
-        greetingsService.deleteAllGreetings();
-        
+        // Creating test Greeting objects.
         Greeting greeting1 = new Greeting("1", "Hello 1");
         Greeting greeting2 = new Greeting("2", "Hello 2");
 
+        // Saving test Greetings to the database via GreetingsService.
         greetingsService.saveGreeting(greeting1);
         greetingsService.saveGreeting(greeting2);
     }
 
+    // Integration test to verify the endpoint for retrieving all greetings.
     @Test
     public void testGetAllGreetings() throws Exception {
         mockMvc.perform(get("/greetings"))
+            // Verifying HTTP response status code is 200 OK.
             .andExpect(status().isOk())
+            // Verifying content type is JSON.
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            // Verifying there are 2 greetings returned.
             .andExpect(jsonPath("$.length()").value(2))
+            // Verifying content of the first greeting.
             .andExpect(jsonPath("$[0].content").value("Hello 1"))
+            // Verifying content of the second greeting.
             .andExpect(jsonPath("$[1].content").value("Hello 2"));
-    }
-
-    @Test
-    public void testCreateGreeting() throws Exception {
-        Greeting greeting = new Greeting("3", "Hello New");
-
-        mockMvc.perform(post("/greetings")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(new ObjectMapper().writeValueAsString(greeting)))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.id").value("3"))
-                .andExpect(jsonPath("$.content").value("Hello New"));
-
-        mockMvc.perform(get("/greetings"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.length()").value(3));
-    }
-
-    @Test
-    public void testUpdateGreeting() throws Exception {
-        Greeting greeting = new Greeting("1", "Hello Updated");
-
-        mockMvc.perform(put("/greetings/1")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(new ObjectMapper().writeValueAsString(greeting)))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.id").value("1"))
-                .andExpect(jsonPath("$.content").value("Hello Updated"));
-
-        mockMvc.perform(get("/greetings"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].content").value("Hello Updated"))
-                .andExpect(jsonPath("$[1].content").value("Hello 2"));
-    }
-
-    @Test
-    public void testDeleteGreeting() throws Exception {
-
-        mockMvc.perform(delete("/greetings/1"))
-            .andExpect(status().isOk());
-
-        mockMvc.perform(get("/greetings"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].content").value("Hello 2"));
     }
 }

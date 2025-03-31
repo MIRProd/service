@@ -37,6 +37,10 @@ public class ApartmentService {
     public List<ApartmentEntity> getAllApartments() {
         return apartmentRepository.findAll();
     }
+    
+    public void deleteAllApartments() {
+        apartmentRepository.deleteAll();
+    }
 
     public Optional<ApartmentEntity> getApartmentById(String id) {
         return apartmentRepository.findById(id);
