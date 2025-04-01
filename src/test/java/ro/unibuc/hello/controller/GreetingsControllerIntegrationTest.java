@@ -35,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // Annotation to enable Testcontainers support.
 @Testcontainers
 // Tagging this test class as an integration test for categorization.
-//@Tag("IntegrationTest")
+@Tag("IntegrationTest")
 public class GreetingsControllerIntegrationTest {
 
     // Declaring a Testcontainers MongoDB container.
