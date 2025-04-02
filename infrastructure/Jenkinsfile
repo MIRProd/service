@@ -11,33 +11,24 @@ pipeline {
             }
         }
 
-        stage('Tag image') {
-            steps {
-                script {
-                    // Preia ultimele taguri din Git și extrage versionarea
-                    GIT_TAG = sh([script: 'git fetch --tags && git tag', returnStdout: true]).trim()
-                    MAJOR_VERSION = sh([script: 'git tag | cut -d . -f 1', returnStdout: true]).trim()
-                    MINOR_VERSION = sh([script: 'git tag | cut -d . -f 2', returnStdout: true]).trim()
-                    PATCH_VERSION = sh([script: 'git tag | cut -d . -f 3', returnStdout: true]).trim()
-                }
-                // Construiește imaginea Docker și adaugă tag-ul corespunzător
-                sh "docker build -t <username>/hello-img:${MAJOR_VERSION}.\$((${MINOR_VERSION} + 1)).${PATCH_VERSION} ."
+        stage('Test Docker') {
+    steps {
+        sh 'docker --version'  // Verifică versiunea Docker
+        sh 'docker info'       // Verifică informațiile Docker
+    }
+}
+
+stage('Check Credentials') {
+    steps {
+        script {
+            withCredentials([usernamePassword(credentialsId: 'docker-password', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                echo "Username: $DOCKER_USERNAME"
+                echo "Password: $DOCKER_PASSWORD"
             }
         }
+    }
+}
 
-        stage('Push to Docker Hub') {
-            steps {
-                script {
-                    // Autentifică-te pe Docker Hub cu credentialele
-                    withCredentials([usernamePassword(credentialsId: 'docker-password', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
-                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin' // Logare pe Docker Hub
-                    }
-
-                    // Trimite imaginea pe Docker Hub
-                    sh "docker push <username>/hello-img:${MAJOR_VERSION}.\$((${MINOR_VERSION} + 1)).${PATCH_VERSION}"
-                }
-            }
-        }
     }
 
     tools {
