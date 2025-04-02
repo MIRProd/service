@@ -1,28 +1,46 @@
 pipeline {
     agent any
     environment {
-        DOCKER_PASSWORD = credentials("docker-password")
+        DOCKER_PASSWORD = credentials("docker-password") // Folosește credentialul pentru autentificare Docker
     }
 
     stages {
         stage('Build & Test') {
             steps {
-                sh './gradlew clean build'
+                sh './gradlew clean build' // Rulează comanda pentru a construi aplicația
             }
         }
+
         stage('Tag image') {
-      steps {
-        script {
-            GIT_TAG = sh([script: 'git fetch --tag && git tag', returnStdout: true]).trim()
-            MAJOR_VERSION = sh([script: 'git tag | cut -d . -f 1', returnStdout: true]).trim()
-            MINOR_VERSION = sh([script: 'git tag | cut -d . -f 2', returnStdout: true]).trim()
-            PATCH_VERSION = sh([script: 'git tag | cut -d . -f 3', returnStdout: true]).trim()
+            steps {
+                script {
+                    // Preia ultimele taguri din Git și extrage versionarea
+                    GIT_TAG = sh([script: 'git fetch --tags && git tag', returnStdout: true]).trim()
+                    MAJOR_VERSION = sh([script: 'git tag | cut -d . -f 1', returnStdout: true]).trim()
+                    MINOR_VERSION = sh([script: 'git tag | cut -d . -f 2', returnStdout: true]).trim()
+                    PATCH_VERSION = sh([script: 'git tag | cut -d . -f 3', returnStdout: true]).trim()
+                }
+                // Construiește imaginea Docker și adaugă tag-ul corespunzător
+                sh "docker build -t <username>/hello-img:${MAJOR_VERSION}.\$((${MINOR_VERSION} + 1)).${PATCH_VERSION} ."
+            }
         }
-        sh "docker build -t <username>/hello-img:${MAJOR_VERSION}.\$((${MINOR_VERSION} + 1)).${PATCH_VERSION} ."
-      }
-}
+
+        stage('Push to Docker Hub') {
+            steps {
+                script {
+                    // Autentifică-te pe Docker Hub cu credentialele
+                    withCredentials([usernamePassword(credentialsId: 'docker-password', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin' // Logare pe Docker Hub
+                    }
+
+                    // Trimite imaginea pe Docker Hub
+                    sh "docker push <username>/hello-img:${MAJOR_VERSION}.\$((${MINOR_VERSION} + 1)).${PATCH_VERSION}"
+                }
+            }
+        }
     }
+
     tools {
-        jdk 'jdk21' // This name must match the JDK installation name used in Jenkins Global Tool Configuration
+        jdk 'jdk21' // Asigură-te că JDK-ul 21 este instalat în Jenkins și folosit în pipeline
     }
 }
