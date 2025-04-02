@@ -10,25 +10,6 @@ pipeline {
                 sh './gradlew clean build' // Rulează comanda pentru a construi aplicația
             }
         }
-
-        stage('Test Docker') {
-    steps {
-        sh 'docker --version'  // Verifică versiunea Docker
-        sh 'docker info'       // Verifică informațiile Docker
-    }
-}
-
-stage('Check Credentials') {
-    steps {
-        script {
-            withCredentials([usernamePassword(credentialsId: 'docker-password', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                echo "Username: $DOCKER_USERNAME"
-                echo "Password: $DOCKER_PASSWORD"
-            }
-        }
-    }
-}
-
     }
 
     tools {
