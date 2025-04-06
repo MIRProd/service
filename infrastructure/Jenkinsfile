@@ -1,8 +1,7 @@
 pipeline {
     agent any
     environment {
-        DOCKER_PASSWORD = credentials("docker-password")  // Folosește credentialul pentru autentificare Docker
-        DOCKER_USERNAME = credentials("docker-username")  // Folosește credentialul pentru username Docker
+        DOCKER_CREDS = credentials("docker-credentials")  // Folosește credentialul pentru autentificare Docker
     }
 
     stages {
@@ -25,7 +24,7 @@ pipeline {
                     echo "GIT_TAG: ${GIT_TAG}, MAJOR_VERSION: ${MAJOR_VERSION}, MINOR_VERSION: ${MINOR_VERSION}, PATCH_VERSION: ${PATCH_VERSION}"
 
                     // Construim imaginea Docker folosind versiunile extrase
-                    sh "docker build -t ${DOCKER_USERNAME}/hello-img:${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION} ."
+                    sh "docker build -t ${DOCKER_CREDS_USR}/hello-img:${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION} ."
                 }
             }
         }
@@ -34,7 +33,7 @@ pipeline {
             steps {
                 script {
                     // Autentificare Docker folosind token-ul în mod mai sigur
-                    sh "echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin"
+                    sh "echo $DOCKER_CREDS_PSW | docker login -u $DOCKER_CREDS_USR --password-stdin"
                 }
             }
         }
@@ -42,8 +41,8 @@ pipeline {
         stage('Push Image') {
             steps {
                 script {
-                    echo "Pushing image ${DOCKER_USERNAME}/hello-img:${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}"
-                    sh "docker push ${DOCKER_USERNAME}/hello-img:${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}"
+                    echo "Pushing image ${DOCKER_CREDS_USR}/hello-img:${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}"
+                    sh "docker push ${DOCKER_CREDS_USR}/hello-img:${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}"
                 }
             }
         }
@@ -53,4 +52,3 @@ pipeline {
         jdk 'jdk21'  // Asigură-te că JDK-ul 21 este instalat în Jenkins și folosit în pipeline
     }
 }
-
