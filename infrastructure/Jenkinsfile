@@ -1,8 +1,9 @@
 pipeline {
     agent any
     environment {
-        // Folosește credentialul pentru autentificare Docker
-        DOCKER_PASSWORD = credentials("docker-password")  // Aici sunt username și parola
+        // Definește corect credentialele Docker
+        DOCKER_USERNAME = credentials("docker-username")   // Folosește credentialul pentru username
+        DOCKER_PASSWORD = credentials("docker-password")   // Folosește credentialul pentru parola/token
     }
 
     stages {
@@ -11,7 +12,7 @@ pipeline {
                 sh './gradlew clean build'  // Rulează comanda pentru a construi aplicația
             }
         }
-
+        
         stage('Tag image') {
             steps {
                 script {
@@ -30,11 +31,8 @@ pipeline {
         stage('Docker Login') {
             steps {
                 script {
-                    // Folosește credentialele pentru Docker pentru autentificare
-                    withCredentials([usernamePassword(credentialsId: 'docker-password', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                        // Autentifică-te în Docker Hub folosind username-ul și parola extrase din credențiale
-                        sh "echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin"
-                    }
+                    // Autentifică-te în Docker Hub folosind username-ul și parola extrase din credențiale
+                    sh "echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin"
                 }
             }
         }
