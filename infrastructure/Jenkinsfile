@@ -60,7 +60,7 @@ pipeline {
 
                     // Create and push git tag
                     sh "git tag ${env.IMAGE_TAG}"
-                    sh "git push https://${GITHUB_TOKEN}@github.com/${DOCKER_CREDS_USR}/service.git ${env.IMAGE_TAG}"
+                    sh "git push https://${GITHUB_TOKEN}@github.com/MIRProd/service.git ${env.IMAGE_TAG}"
                 }
             }
         }
