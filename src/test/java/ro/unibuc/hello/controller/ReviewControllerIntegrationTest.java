@@ -60,9 +60,12 @@ public class ReviewControllerIntegrationTest {
     }
 
     @DynamicPropertySource
-    static void setProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
-    }
+     static void setProperties(DynamicPropertyRegistry registry) {
+         final String MONGO_URL = "mongodb://localhost:";
+         final String PORT = String.valueOf(mongoDBContainer.getMappedPort(27017));
+ 
+         registry.add("mongodb.connection.url", () -> MONGO_URL + PORT);
+     }
 
     @Autowired
     private MockMvc mockMvc;
