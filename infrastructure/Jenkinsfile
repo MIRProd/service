@@ -2,6 +2,11 @@ pipeline {
     agent any
     environment {
         DOCKER_CREDS = credentials("docker-credentials")
+        GITHUB_TOKEN = credentials("github-token")
+    }
+
+    tools {
+        jdk 'jdk21'
     }
 
     stages {
@@ -11,55 +16,51 @@ pipeline {
             }
         }
 
-        stage('Tag image') {
+        stage('Generate Tag Info') {
             steps {
                 script {
-                    // Definim variabile locale
-                    def tagInfo = getVersionInfo()
+                    // Fetch all tags
+                    sh "git fetch --tags"
+
+                    // Set environment variables
+                    env.MAJOR_VERSION = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 1", returnStdout: true).trim()
+                    env.MINOR_VERSION = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 2", returnStdout: true).trim()
+                    env.PATCH_VERSION = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 3", returnStdout: true).trim()
                     
-                    // Folosim variabilele direct în acest scope
-                    echo "GIT_TAG: ${tagInfo.GIT_TAG}, Version: ${tagInfo.MAJOR}.${tagInfo.MINOR}.${tagInfo.PATCH}"
-                    sh "docker build -t ${DOCKER_CREDS_USR}/hello-img:${tagInfo.MAJOR}.${tagInfo.MINOR}.${tagInfo.PATCH} ."
+                    // Generate new tag by incrementing MINOR
+                    env.IMAGE_TAG = "${env.MAJOR_VERSION}.$((env.MINOR_VERSION.toInteger() + 1)).${env.PATCH_VERSION}"
                     
-                    // Salvăm valorile necesare pentru etapele următoare
-                    dockerImage = "${DOCKER_CREDS_USR}/hello-img:${tagInfo.MAJOR}.${tagInfo.MINOR}.${tagInfo.PATCH}"
+                    echo "Generated tag: ${env.IMAGE_TAG}"
                 }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh "docker build -t ${DOCKER_CREDS_USR}/hello-img:${env.IMAGE_TAG} ."
             }
         }
 
         stage('Docker Login') {
             steps {
-                script {
-                    // Folosim credentialele direct din environment
-                    sh """
-                        echo \$DOCKER_CREDS_PSW | docker login -u \$DOCKER_CREDS_USR --password-stdin
-                    """
-                }
+                sh """
+                    echo \$DOCKER_CREDS_PSW | docker login -u \$DOCKER_CREDS_USR --password-stdin
+                """
             }
         }
 
         stage('Push Image') {
             steps {
                 script {
-                    echo "Pushing image ${dockerImage}"
-                    sh "docker push ${dockerImage}"
+                    echo "Pushing image ${DOCKER_CREDS_USR}/hello-img:${env.IMAGE_TAG}"
+                    sh "docker push ${DOCKER_CREDS_USR}/hello-img:${env.IMAGE_TAG}"
+
+                    // Create and push git tag
+                    sh "git tag ${env.IMAGE_TAG}"
+                    sh "git push https://${GITHUB_TOKEN}@github.com/${DOCKER_CREDS_USR}/service.git ${env.IMAGE_TAG}"
                 }
             }
         }
     }
-
-    tools {
-        jdk 'jdk21'
-    }
 }
 
-// Funcție helper pentru versiuni (returnează un map)
-def getVersionInfo() {
-    def GIT_TAG = sh(script: 'git fetch --tags && git tag', returnStdout: true).trim()
-    return [
-        GIT_TAG: GIT_TAG,
-        MAJOR: sh(script: 'git tag | cut -d . -f 1', returnStdout: true).trim(),
-        MINOR: sh(script: 'git tag | cut -d . -f 2', returnStdout: true).trim(),
-        PATCH: sh(script: 'git tag | cut -d . -f 3', returnStdout: true).trim()
-    ]
-}
