@@ -149,6 +149,7 @@ public class ReviewControllerIntegrationTest {
                 .param("userId", "user123"))
                 .andExpect(status().isOk());
 
+
         // Verifică starea finală
         mockMvc.perform(get("/reviews/1"))
                 .andExpect(status().isOk())
