@@ -17,23 +17,26 @@ pipeline {
         }
 
         stage('Generate Tag Info') {
-            steps {
-                script {
-                    // Fetch all tags
-                    sh "git fetch --tags"
+	    steps {
+		script {
+		    sh "git fetch --tags"
 
-                    // Set environment variables
-                    env.MAJOR_VERSION = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 1", returnStdout: true).trim()
-                    env.MINOR_VERSION = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 2", returnStdout: true).trim()
-                    env.PATCH_VERSION = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 3", returnStdout: true).trim()
-                    
-                    // Generate new tag by incrementing MINOR
-                    env.IMAGE_TAG = "${env.MAJOR_VERSION}.$((env.MINOR_VERSION.toInteger() + 1)).${env.PATCH_VERSION}"
-                    
-                    echo "Generated tag: ${env.IMAGE_TAG}"
-                }
-            }
-        }
+		    def major = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 1", returnStdout: true).trim()
+		    def minor = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 2", returnStdout: true).trim()
+		    def patch = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 3", returnStdout: true).trim()
+
+		    def nextMinor = (minor.toInteger() + 1).toString()
+
+		    env.MAJOR_VERSION = major
+		    env.MINOR_VERSION = nextMinor
+		    env.PATCH_VERSION = patch
+		    env.IMAGE_TAG = "${major}.${nextMinor}.${patch}"
+
+		    echo "Generated tag: ${env.IMAGE_TAG}"
+		}
+	    }
+	}
+
 
         stage('Build Docker Image') {
             steps {
