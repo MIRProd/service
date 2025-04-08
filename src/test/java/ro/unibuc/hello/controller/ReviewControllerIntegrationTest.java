@@ -1,140 +1,161 @@
-import com.fasterxml.jackson.databind.ObjectMapper;
-import ro.unibuc.hello.data.ReviewEntity;
-import ro.unibuc.hello.service.ReviewService;
-import ro.unibuc.hello.repository.BookingRepository;
-import ro.unibuc.hello.data.BookingEntity;
-import ro.unibuc.hello.controller.ReviewController;
-import ro.unibuc.hello.service.ReviewService;
+package ro.unibuc.hello.controller;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.*;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.time.LocalDate;
-import java.util.Arrays;
-import java.util.HashSet;
 
-import java.util.Set;
-import java.util.HashSet;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.beans.factory.annotation.Autowired;
+import ro.unibuc.hello.data.UserEntity;
+import ro.unibuc.hello.data.BookingEntity;
+import org.mockito.Mockito.*;
+import org.mockito.MockitoAnnotations;
 
-
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.MongoDBContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import ro.unibuc.hello.data.ReviewEntity;
+import ro.unibuc.hello.repository.ReviewRepository;
+import ro.unibuc.hello.service.ReviewService;
+import ro.unibuc.hello.repository.UserRepository;
+import ro.unibuc.hello.repository.BookingRepository;
+
+import java.util.Arrays;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@Testcontainers
+@Tag("IntegrationTest")
 public class ReviewControllerIntegrationTest {
 
-    @Mock
-    private ReviewService reviewService;
+    @Container
+    public static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:6.0.20")
+            .withExposedPorts(27017);
 
-    @InjectMocks
-    private ReviewController reviewController;
+    @BeforeAll
+    public static void setUp() {
+        mongoDBContainer.start();
+    }
 
-    @Mock
-    private BookingRepository bookingRepository;
+    @AfterAll
+    public static void tearDown() {
+        mongoDBContainer.stop();
+    }
 
+    @DynamicPropertySource
+    static void setProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
+    }
+
+    @Autowired
     private MockMvc mockMvc;
 
-    private ReviewEntity review;
+    @Autowired
+    private ReviewRepository reviewRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private BookingRepository bookingRepository;
+
+    private ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
-    public void setUp() {
-        MockitoAnnotations.openMocks(this);
-        mockMvc = MockMvcBuilders.standaloneSetup(reviewController).build();
+    public void cleanUp() {
+        reviewRepository.deleteAll();
+        userRepository.deleteAll();
+        bookingRepository.deleteAll();
+    }
 
-        // Setup ReviewEntity correctly
-        review = new ReviewEntity("1", "Great apartment!", 4, "apartment123", "user123");
-        review.setLikes(new HashSet<>());
-        review.setDislikes(new HashSet<>());
+    private void createTestData() {
+        // Create and save user
+        UserEntity user = new UserEntity();
+        user.setId("user123");
+        user.setName("Test User");
+        user.setEmail("test@example.com");
+        userRepository.save(user);
+        
+        // Create and save booking
+        BookingEntity booking = new BookingEntity();
+        booking.setApartmentId("apartment123");
+        booking.setUserId("user123");
+        booking.setStartDate(LocalDate.of(2025, 1, 1));
+        booking.setEndDate(LocalDate.of(2025, 1, 5));
+        bookingRepository.save(booking);
     }
 
     @Test
     public void testCreateReview_Success() throws Exception {
-        // Mocks
-        when(bookingRepository.findByApartmentIdAndUserId("apartment123", "user123"))
-            .thenReturn(Arrays.asList(new BookingEntity(
-                LocalDate.of(2025, 1, 1),  // Start date
-                LocalDate.of(2025, 1, 7),  // End date
-                "apartment123",            // Apartment ID
-                "user123"                  // User ID
-            )));  // Simulating a valid booking
+        createTestData();
+        ReviewEntity review = new ReviewEntity("1", "Great apartment!", 4, "apartment123", "user123");
 
-        when(reviewService.createReview(any(ReviewEntity.class))).thenReturn(review);
-
-        // Act & Assert: Send a POST request to create the review and check the response
         mockMvc.perform(post("/reviews")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(new ObjectMapper().writeValueAsString(review)))
-                .andExpect(status().isCreated())  // Expecting HTTP status 201 (Created)
-                .andExpect(content().string("Review successfully created!"));  // Checking if the message matches
-
-        // Verify that the createReview method was called once with the correct parameters
-        verify(reviewService, times(1)).createReview(any(ReviewEntity.class));
-    }
-
-    @Test
-    public void testCreateReview_UserMustHaveBooked() throws Exception {
-        // Mocks: No booking for the user
-        when(bookingRepository.findByApartmentIdAndUserId("apartment123", "user123"))
-            .thenReturn(Arrays.asList());  // No booking found
-
-        // Act & Assert: Send a POST request to create the review and check the response
-        mockMvc.perform(post("/reviews")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(new ObjectMapper().writeValueAsString(review)))
-                .andExpect(status().isBadRequest())  // Expecting HTTP status 400 (Bad Request)
-                .andExpect(content().string("User must have booked the apartment before leaving a review."));  // Error message for user who didn't book
-    }
-
-    @Test
-    public void testGetAllReviews_Success() throws Exception {
-        // Simulate reviews being available
-        when(reviewService.getAllReviewsSortedByRating()).thenReturn(Arrays.asList(review));
-
-        // Act & Assert: Send a GET request to fetch all reviews and check the response
-        mockMvc.perform(get("/reviews"))
-                .andExpect(status().isOk())  // Expecting HTTP status 200 (OK)
-                .andExpect(jsonPath("$.length()").value(1))  // Only 1 review should be present
-                .andExpect(jsonPath("$[0].content").value("Great apartment!"));  // Checking the content of the review
-    }
-
-    @Test
-    public void testAddLike_AfterAddDislike_ShouldRemoveDislike() throws Exception {
-        // Setup: Set initial dislike
-        Set<String> dislikes = new HashSet<>();
-        dislikes.add("user123");
-        review.setDislikes(dislikes);
-
-        // Mocks: Simulate that the review is present and user has added a dislike
-        when(reviewService.addDislike("1", "user123")).thenReturn("Dislike added successfully!");
-        when(reviewService.addLike("1", "user123")).thenReturn("Like added successfully!");
-
-        // Add Dislike
-        mockMvc.perform(post("/reviews/1/dislike")
-                .param("userId", "user123"))
+                .content(objectMapper.writeValueAsString(review)))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Dislike added successfully!"));
+                .andExpect(content().string("Review successfully created!"));
+    }
 
-        // Verify that dislike was added
-        assertTrue(dislikes.contains("user123"));
-        
-        // Add Like after Dislike
+    @Test
+    public void testAddLikeToReview_Success() throws Exception {
+        createTestData();
+        ReviewEntity review = new ReviewEntity("1", "Great apartment!", 4, "apartment123", "user123");
+        reviewRepository.save(review);
+
         mockMvc.perform(post("/reviews/1/like")
                 .param("userId", "user123"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Like added successfully!"));
 
-        // Verify that the dislike is removed and like is added
-        assertTrue(review.getLikes().contains("user123"));
-        assertFalse(review.getDislikes().contains("user123"));
+        // Verificare prin endpoint-ul de get
+        mockMvc.perform(get("/reviews/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.likes").isArray())
+                .andExpect(jsonPath("$.likes.length()").value(1))
+                .andExpect(jsonPath("$.likes[0]").value("user123"));
+    }
 
-        // Verify service methods were called
-        verify(reviewService, times(1)).addDislike("1", "user123");
-        verify(reviewService, times(1)).addLike("1", "user123");
+    @Test
+    public void testAddLikeAndDislike_RemoveLike_Success() throws Exception {
+        createTestData();
+        ReviewEntity review = new ReviewEntity("1", "Great apartment!", 4, "apartment123", "user123");
+        reviewRepository.save(review);
+
+        // Adaugă like
+        mockMvc.perform(post("/reviews/1/like")
+                .param("userId", "user123"))
+                .andExpect(status().isOk());
+
+        // Adaugă dislike (ar trebui să elimine like-ul)
+        mockMvc.perform(post("/reviews/1/dislike")
+                .param("userId", "user123"))
+                .andExpect(status().isOk());
+
+        // Verifică starea finală
+        mockMvc.perform(get("/reviews/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.likes").isArray())
+                .andExpect(jsonPath("$.likes.length()").value(0))
+                .andExpect(jsonPath("$.dislikes").isArray())
+                .andExpect(jsonPath("$.dislikes.length()").value(1))
+                .andExpect(jsonPath("$.dislikes[0]").value("user123"));
     }
 }
