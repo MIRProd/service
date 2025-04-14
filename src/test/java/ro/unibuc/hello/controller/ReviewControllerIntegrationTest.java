@@ -162,3 +162,4 @@ package ro.unibuc.hello.controller;
                  .andExpect(jsonPath("$.dislikes.length()").value(1))
                  .andExpect(jsonPath("$.dislikes[0]").value("user123"));
      }
+ }
