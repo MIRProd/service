@@ -3,6 +3,7 @@ pipeline {
     environment {
         DOCKER_CREDS = credentials("docker-credentials")
         GITHUB_TOKEN = credentials("github-token")
+        IMAGE_TAG = "${env.IMAGE_TAG}"
     }
 
     tools {
@@ -69,7 +70,8 @@ pipeline {
                 script {
                     echo "Starting services with IMAGE_TAG=${env.IMAGE_TAG}"
                     sh """
-                        IMAGE_TAG=${env.IMAGE_TAG} docker compose up -d hello mongo
+                        export IMAGE_TAG=${env.IMAGE_TAG} 
+                        docker compose up -d hello mongo
                     """
                 }
             }
