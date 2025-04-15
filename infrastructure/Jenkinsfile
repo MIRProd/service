@@ -3,7 +3,6 @@ pipeline {
     environment {
         DOCKER_CREDS = credentials("docker-credentials")
         GITHUB_TOKEN = credentials("github-token")
-        IMAGE_TAG = "${env.IMAGE_TAG}"
     }
 
     tools {
@@ -23,9 +22,11 @@ pipeline {
             sh "git fetch --tags"
 
             def latestTag = sh(
-                script: "git tag | grep -E '^[0-9]+\\.[0-9]+\\.[0-9]+$' | sort --version-sort | tail -1",
-                returnStdout: true
-            ).trim()
+    script: '''
+        git tag | grep -E '^[0-9]+\\.[0-9]+\\.[0-9]+$' | sort --version-sort | tail -1
+    ''',
+    returnStdout: true
+).trim()
 
             if (!latestTag) {
                 echo "No tags found, using default 0.0.0"
