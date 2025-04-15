@@ -17,36 +17,25 @@ pipeline {
         }
 
         stage('Generate Tag Info') {
-    steps {
-        script {
-            sh "git fetch --tags"
+	    steps {
+		script {
+		    sh "git fetch --tags"
 
-            def latestTag = sh(
-    script: '''
-        git tag | grep -E '^[0-9]+\\.[0-9]+\\.[0-9]+$' | sort --version-sort | tail -1
-    ''',
-    returnStdout: true
-).trim()
+		    def major = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 1", returnStdout: true).trim()
+		    def minor = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 2", returnStdout: true).trim()
+		    def patch = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 3", returnStdout: true).trim()
 
-            if (!latestTag) {
-                echo "No tags found, using default 0.0.0"
-                latestTag = "0.0.0"
-            }
+		    def nextMinor = (minor.toInteger() + 1).toString()
 
-            def (major, minor, patch) = latestTag.tokenize('.')
+		    env.MAJOR_VERSION = major
+		    env.MINOR_VERSION = nextMinor
+		    env.PATCH_VERSION = patch
+		    env.IMAGE_TAG = "${major}.${nextMinor}.${patch}"
 
-            def nextMinor = (minor.toInteger() + 1).toString()
-
-            env.MAJOR_VERSION = major
-            env.MINOR_VERSION = nextMinor
-            env.PATCH_VERSION = patch
-            env.IMAGE_TAG = "${major}.${nextMinor}.${patch}"
-
-            echo "Generated tag: ${env.IMAGE_TAG}"
-        }
-    }
-}
-
+		    echo "Generated tag: ${env.IMAGE_TAG}"
+		}
+	    }
+	}
 
 
         stage('Build Docker Image') {
@@ -80,8 +69,7 @@ pipeline {
                 script {
                     echo "Starting services with IMAGE_TAG=${env.IMAGE_TAG}"
                     sh """
-                        export IMAGE_TAG=${env.IMAGE_TAG} 
-                        docker compose up -d hello mongo
+                        IMAGE_TAG=${env.IMAGE_TAG} docker compose up -d hello mongo
                     """
                 }
             }
