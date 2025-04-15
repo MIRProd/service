@@ -3,6 +3,7 @@ pipeline {
     environment {
         DOCKER_CREDS = credentials("docker-credentials")
         GITHUB_TOKEN = credentials("github-token")
+        IMAGE_TAG = "${env.IMAGE_TAG}"
     }
 
     tools {
@@ -60,12 +61,7 @@ pipeline {
 
                     // Create and push git tag
                     sh "git tag ${env.IMAGE_TAG}"
-                   withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PASS')]) {
-    sh '''
-        git remote set-url origin https://${GIT_USER}:${GIT_PASS}@github.com/MIRProd/service.git
-        git push origin ${IMAGE_TAG}
-    '''
-                   }
+                    sh "git push https://${GITHUB_TOKEN}@github.com/MIRProd/service.git ${env.IMAGE_TAG}"
                 }
             }
         }
@@ -74,11 +70,17 @@ pipeline {
                 script {
                     echo "Starting services with IMAGE_TAG=${env.IMAGE_TAG}"
                     sh """
-                        IMAGE_TAG=${env.IMAGE_TAG} docker compose up -d hello mongo
+                        export IMAGE_TAG=${env.IMAGE_TAG} 
+                        docker compose up -d hello mongo
                     """
                 }
             }
         }
-        
+        stage('Integration Tests') {
+            steps {
+                sh './gradlew testIT'
+            }
+        }
+
     }
 }
