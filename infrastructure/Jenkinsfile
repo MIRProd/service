@@ -2,7 +2,6 @@ pipeline {
     agent any
     environment {
         DOCKER_CREDS = credentials("docker-credentials")
-        GITHUB_TOKEN = credentials("github-token")
     }
 
     tools {
@@ -17,26 +16,24 @@ pipeline {
         }
 
         stage('Generate Tag Info') {
-	    steps {
-		script {
-		    sh "git fetch --tags"
+            steps {
+                script {
+                    sh "git fetch --tags"
+                    def major = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 1", returnStdout: true).trim()
+                    def minor = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 2", returnStdout: true).trim()
+                    def patch = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 3", returnStdout: true).trim()
 
-		    def major = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 1", returnStdout: true).trim()
-		    def minor = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 2", returnStdout: true).trim()
-		    def patch = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 3", returnStdout: true).trim()
+                    def nextMinor = (minor.toInteger() + 1).toString()
 
-		    def nextMinor = (minor.toInteger() + 1).toString()
+                    env.MAJOR_VERSION = major
+                    env.MINOR_VERSION = nextMinor
+                    env.PATCH_VERSION = patch
+                    env.IMAGE_TAG = "${major}.${nextMinor}.${patch}"
 
-		    env.MAJOR_VERSION = major
-		    env.MINOR_VERSION = nextMinor
-		    env.PATCH_VERSION = patch
-		    env.IMAGE_TAG = "${major}.${nextMinor}.${patch}"
-
-		    echo "Generated tag: ${env.IMAGE_TAG}"
-		}
-	    }
-	}
-
+                    echo "Generated tag: ${env.IMAGE_TAG}"
+                }
+            }
+        }
 
         stage('Build Docker Image') {
             steps {
@@ -52,20 +49,28 @@ pipeline {
             }
         }
 
-       stage('Push Image') {
-    steps {
-        script {
-            echo "Pushing image ${DOCKER_CREDS_USR}/hello-img:${env.IMAGE_TAG}"
-            sh "docker push ${DOCKER_CREDS_USR}/hello-img:${env.IMAGE_TAG}"
+        stage('Push Image') {
+            steps {
+                script {
+                    echo "Pushing image ${DOCKER_CREDS_USR}/hello-img:${env.IMAGE_TAG}"
+                    sh "docker push ${DOCKER_CREDS_USR}/hello-img:${env.IMAGE_TAG}"
 
-            // Create and push git tag
-            sh "git tag ${env.IMAGE_TAG}"
-            withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
-                sh 'git push https://${GITHUB_TOKEN_PSW}@github.com/MIRProd/service.git ${env.IMAGE_TAG}'
+                    // Create and push git tag
+                    sh "git tag ${env.IMAGE_TAG}"
+                    withCredentials([usernamePassword(
+                        credentialsId: 'github-token',
+                        usernameVariable: 'GIT_USER',
+                        passwordVariable: 'GIT_TOKEN'
+                    )]) {
+                        sh '''
+                            git config --global url."https://${GIT_USER}:${GIT_TOKEN}@github.com".insteadOf "https://github.com"
+                            git push origin ${env.IMAGE_TAG}
+                        '''
+                    }
+                }
             }
         }
-    }
-}
+
         stage('Start Services') {
             steps {
                 script {
@@ -76,12 +81,11 @@ pipeline {
                 }
             }
         }
+
         stage('Integration Tests') {
             steps {
                 sh './gradlew testIT'
             }
         }
-
     }
 }
-
