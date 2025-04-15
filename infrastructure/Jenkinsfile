@@ -53,17 +53,23 @@ pipeline {
         }
 
         stage('Push Image') {
-            steps {
-                script {
-                    echo "Pushing image ${DOCKER_CREDS_USR}/hello-img:${env.IMAGE_TAG}"
-                    sh "docker push ${DOCKER_CREDS_USR}/hello-img:${env.IMAGE_TAG}"
+    steps {
+        script {
+            echo "Pushing image ${DOCKER_CREDS_USR}/hello-img:${env.IMAGE_TAG}"
+            sh "docker push ${DOCKER_CREDS_USR}/hello-img:${env.IMAGE_TAG}"
 
-                    // Create and push git tag
-                    sh "git tag ${env.IMAGE_TAG}"
-                    sh "git push https://${GITHUB_TOKEN}@github.com/MIRProd/service.git ${env.IMAGE_TAG}"
-                }
+            // Create and push git tag
+            sh "git tag ${env.IMAGE_TAG}"
+            withCredentials([usernamePassword(
+                credentialsId: 'github-token',
+                usernameVariable: 'GIT_USERNAME',
+                passwordVariable: 'GIT_TOKEN'
+            )]) {
+                sh 'git push https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/MIRProd/service.git ${env.IMAGE_TAG}'
             }
         }
+    }
+}
         stage('Start Services') {
             steps {
                 script {
