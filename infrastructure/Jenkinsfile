@@ -61,7 +61,7 @@ pipeline {
             // Create and push git tag
             sh "git tag ${env.IMAGE_TAG}"
             withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
-                sh 'git push https://${GITHUB_TOKEN}@github.com/MIRProd/service.git ${env.IMAGE_TAG}'
+                sh 'git push https://${GITHUB_TOKEN_PSW}@github.com/MIRProd/service.git ${env.IMAGE_TAG}'
             }
         }
     }
