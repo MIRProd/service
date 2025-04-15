@@ -18,25 +18,34 @@ pipeline {
         }
 
         stage('Generate Tag Info') {
-	    steps {
-		script {
-		    sh "git fetch --tags"
+    steps {
+        script {
+            sh "git fetch --tags"
 
-		    def major = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 1", returnStdout: true).trim()
-		    def minor = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 2", returnStdout: true).trim()
-		    def patch = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 3", returnStdout: true).trim()
+            def latestTag = sh(
+                script: "git tag | grep -E '^[0-9]+\\.[0-9]+\\.[0-9]+$' | sort --version-sort | tail -1",
+                returnStdout: true
+            ).trim()
 
-		    def nextMinor = (minor.toInteger() + 1).toString()
+            if (!latestTag) {
+                echo "No tags found, using default 0.0.0"
+                latestTag = "0.0.0"
+            }
 
-		    env.MAJOR_VERSION = major
-		    env.MINOR_VERSION = nextMinor
-		    env.PATCH_VERSION = patch
-		    env.IMAGE_TAG = "${major}.${nextMinor}.${patch}"
+            def (major, minor, patch) = latestTag.tokenize('.')
 
-		    echo "Generated tag: ${env.IMAGE_TAG}"
-		}
-	    }
-	}
+            def nextMinor = (minor.toInteger() + 1).toString()
+
+            env.MAJOR_VERSION = major
+            env.MINOR_VERSION = nextMinor
+            env.PATCH_VERSION = patch
+            env.IMAGE_TAG = "${major}.${nextMinor}.${patch}"
+
+            echo "Generated tag: ${env.IMAGE_TAG}"
+        }
+    }
+}
+
 
 
         stage('Build Docker Image') {
