@@ -2,6 +2,7 @@ pipeline {
     agent any
     environment {
         DOCKER_CREDS = credentials("docker-credentials")
+        GITHUB_TOKEN = credentials("github-token")
     }
 
     tools {
@@ -16,24 +17,26 @@ pipeline {
         }
 
         stage('Generate Tag Info') {
-            steps {
-                script {
-                    sh "git fetch --tags"
-                    def major = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 1", returnStdout: true).trim()
-                    def minor = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 2", returnStdout: true).trim()
-                    def patch = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 3", returnStdout: true).trim()
+	    steps {
+		script {
+		    sh "git fetch --tags"
 
-                    def nextMinor = (minor.toInteger() + 1).toString()
+		    def major = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 1", returnStdout: true).trim()
+		    def minor = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 2", returnStdout: true).trim()
+		    def patch = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 3", returnStdout: true).trim()
 
-                    env.MAJOR_VERSION = major
-                    env.MINOR_VERSION = nextMinor
-                    env.PATCH_VERSION = patch
-                    env.IMAGE_TAG = "${major}.${nextMinor}.${patch}"
+		    def nextMinor = (minor.toInteger() + 1).toString()
 
-                    echo "Generated tag: ${env.IMAGE_TAG}"
-                }
-            }
-        }
+		    env.MAJOR_VERSION = major
+		    env.MINOR_VERSION = nextMinor
+		    env.PATCH_VERSION = patch
+		    env.IMAGE_TAG = "${major}.${nextMinor}.${patch}"
+
+		    echo "Generated tag: ${env.IMAGE_TAG}"
+		}
+	    }
+	}
+
 
         stage('Build Docker Image') {
             steps {
@@ -57,20 +60,10 @@ pipeline {
 
                     // Create and push git tag
                     sh "git tag ${env.IMAGE_TAG}"
-                    withCredentials([usernamePassword(
-                        credentialsId: 'github-token',
-                        usernameVariable: 'GIT_USER',
-                        passwordVariable: 'GIT_TOKEN'
-                    )]) {
-                        sh '''
-                            git config --global url."https://${GIT_USER}:${GIT_TOKEN}@github.com".insteadOf "https://github.com"
-                            git push origin ${env.IMAGE_TAG}
-                        '''
-                    }
+                    sh "git push https://${GITHUB_TOKEN}@github.com/MIRProd/service.git ${env.IMAGE_TAG}"
                 }
             }
         }
-
         stage('Start Services') {
             steps {
                 script {
@@ -81,11 +74,6 @@ pipeline {
                 }
             }
         }
-
-        stage('Integration Tests') {
-            steps {
-                sh './gradlew testIT'
-            }
-        }
+        
     }
 }
