@@ -1,6 +1,6 @@
 services:
   hello:
-    image: carunturazvan/hello-img:${IMAGE_TAG}
+    image: hello-img
     ports:
       - 8080:8080
       # Port for debug
@@ -9,23 +9,28 @@ services:
       ENVIRONMENT_NAME: local
       MONGODB_CONECTION_URL: mongodb://root:example@mongo:27017/
     restart: always
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://loki:3100/loki/api/v1/push"
     profiles:
       - "hello-service"
   jenkins:
     image: jenkins/jenkins
+    platform: linux/amd64
     ports:
       - 8082:8080
       - 50000:50000
     restart: on-failure
     volumes:
-      - /workspaces/jenkins_config:/var/jenkins_home
+      - ~/workspaces/jenkins_config:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
-      - /usr/bin/docker:/usr/bin/docker
+      - /usr/local/bin/docker:/usr/bin/docker
       - ./Dockerfile:/Dockerfile
-      - /usr/libexec/docker/cli-plugins/docker-compose:/usr/libexec/docker/cli-plugins/docker-compose
+      # - /usr/libexec/docker/cli-plugins/docker-compose:/usr/libexec/docker/cli-plugins/docker-compose
     profiles:
       - "hello-service"
-    user: 0:0
+    user: root
     extra_hosts:
       - "host.docker.internal:host-gateway"
   mongo:
@@ -36,6 +41,10 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: example
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://loki:3100/loki/api/v1/push"
     profiles:
       - "mongo"
   mongo-admin-ui:
@@ -49,6 +58,10 @@ services:
       ME_CONFIG_MONGODB_URL: mongodb://root:example@mongo:27017/
       ME_CONFIG_BASICAUTH_USERNAME: unibuc
       ME_CONFIG_BASICAUTH_PASSWORD: adobe
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://loki:3100/loki/api/v1/push"
     profiles:
       - "mongo"
 # MONITORING SERVICES
