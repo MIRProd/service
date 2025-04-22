@@ -1,6 +1,6 @@
 services:
   hello:
-    image: carunturazvan/hello-img:latest
+    image: carunturazvan/hello-img:1.9.0
     ports:
       - 8080:8080
       # Port for debug
