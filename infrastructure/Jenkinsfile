@@ -16,26 +16,50 @@ pipeline {
             }
         }
 
-        stage('Generate Tag Info') {
-	    steps {
-		script {
-		    sh "git fetch --tags"
+       stage('Generate Tag Info') {
+            steps {
+                script {
+                    sh "git fetch --tags"
 
-		    def major = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 1", returnStdout: true).trim()
-		    def minor = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 2", returnStdout: true).trim()
-		    def patch = sh(script: "git tag | sort --version-sort | tail -1 | cut -d . -f 3", returnStdout: true).trim()
+                    // Obține ultimul tag sortat
+                    def lastTag = sh(script: "git tag | sort --version-sort | tail -1", returnStdout: true).trim()
 
-		    def nextMinor = (minor.toInteger() + 1).toString()
+                    def major, minor, patch, nextMinor
 
-		    env.MAJOR_VERSION = major
-		    env.MINOR_VERSION = nextMinor
-		    env.PATCH_VERSION = patch
-		    env.IMAGE_TAG = "${major}.${nextMinor}.${patch}"
+                    if (lastTag && lastTag ==~ /^[0-9]+\.[0-9]+\.[0-9]+$/) {
+                        // Extrage major, minor, patch dacă tag-ul este valid
+                        major = sh(script: "echo ${lastTag} | cut -d . -f 1", returnStdout: true).trim()
+                        minor = sh(script: "echo ${lastTag} | cut -d . -f 2", returnStdout: true).trim()
+                        patch = sh(script: "echo ${lastTag} | cut -d . -f 3", returnStdout: true).trim()
 
-		    echo "Generated tag: ${env.IMAGE_TAG}"
-		}
-	    }
-	}
+                        // Verifică dacă valorile sunt numerice și nu goale
+                        if (major.isNumber() && minor.isNumber() && patch.isNumber()) {
+                            nextMinor = (minor.toInteger() + 1).toString()
+                        } else {
+                            echo "Invalid tag format for ${lastTag}. Using default version 0.1.0."
+                            major = "0"
+                            minor = "0"
+                            nextMinor = "1"
+                            patch = "0"
+                        }
+                    } else {
+                        // Dacă nu există tag-uri sau tag-ul nu respectă formatul x.y.z
+                        echo "No valid tags found. Using default version 0.1.0."
+                        major = "0"
+                        minor = "0"
+                        nextMinor = "1"
+                        patch = "0"
+                    }
+
+                    env.MAJOR_VERSION = major
+                    env.MINOR_VERSION = nextMinor
+                    env.PATCH_VERSION = patch
+                    env.IMAGE_TAG = "${major}.${nextMinor}.${patch}"
+
+                    echo "Generated tag: ${env.IMAGE_TAG}"
+                }
+            }
+        }
 
 
         stage('Build Docker Image') {
