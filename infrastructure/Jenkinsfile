@@ -23,7 +23,7 @@ pipeline {
 
                     // Obține ultimul tag sortat
                     def lastTag = sh(script: "git tag | sort --version-sort | tail -1", returnStdout: true).trim()
-
+		    echo "Last tag found: ${lastTag}"
                     def major, minor, patch, nextMinor
 
                     if (lastTag && lastTag ==~ /^[0-9]+\.[0-9]+\.[0-9]+$/) {
