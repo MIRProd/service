@@ -19,7 +19,11 @@ pipeline {
         stage('Generate Tag Info') {
             steps {
                 script {
+                    echo "Fetching tags from remote..."
                     sh "git fetch --tags"
+
+                    echo "Tags found after fetch:"
+                    sh "git tag"  
 
                     def lastTag = sh(script: "git tag | sort --version-sort | tail -1", returnStdout: true).trim()
                     echo "Last tag: ${lastTag}"
