@@ -25,7 +25,9 @@ pipeline {
                     echo "Tags found after fetch:"
                     sh "git tag"  
 
-                    def lastTag = sh(script: "git tag | sort --version-sort | tail -1", returnStdout: true).trim()
+                    //def lastTag = sh(script: "git tag | sort --version-sort | tail -1", returnStdout: true).trim()
+                    def lastTag = sh(script: "git tag | grep -E '^[0-9]+\\.[0-9]+\\.[0-9]+$' | sort --version-sort | tail -1", returnStdout: true).trim()
+
                     echo "Last tag: ${lastTag}"
 
                     def major = "0", minor = "0", patch = "0", nextMinor = "1"
