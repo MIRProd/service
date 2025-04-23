@@ -16,39 +16,29 @@ pipeline {
             }
         }
 
-       stage('Generate Tag Info') {
+        stage('Generate Tag Info') {
             steps {
                 script {
                     sh "git fetch --tags"
 
-                    // Obține ultimul tag sortat
                     def lastTag = sh(script: "git tag | sort --version-sort | tail -1", returnStdout: true).trim()
-		    echo "Last tag found: ${lastTag}"
-                    def major, minor, patch, nextMinor
+                    echo "Last tag: ${lastTag}"
 
-                    if (lastTag && lastTag ==~ /^[0-9]+\.[0-9]+\.[0-9]+$/) {
-                        // Extrage major, minor, patch dacă tag-ul este valid
-                        major = sh(script: "echo ${lastTag} | cut -d . -f 1", returnStdout: true).trim()
-                        minor = sh(script: "echo ${lastTag} | cut -d . -f 2", returnStdout: true).trim()
-                        patch = sh(script: "echo ${lastTag} | cut -d . -f 3", returnStdout: true).trim()
+                    def major = "0", minor = "0", patch = "0", nextMinor = "1"
 
-                        // Verifică dacă valorile sunt numerice și nu goale
-                        if (major.isNumber() && minor.isNumber() && patch.isNumber()) {
+                    if (lastTag ==~ /^[0-9]+\.[0-9]+\.[0-9]+$/) {
+                        def parts = lastTag.tokenize(".")
+                        major = parts[0]
+                        minor = parts[1]
+                        patch = parts[2]
+
+                        if (minor.isInteger()) {
                             nextMinor = (minor.toInteger() + 1).toString()
                         } else {
-                            echo "Invalid tag format for ${lastTag}. Using default version 0.1.0."
-                            major = "0"
-                            minor = "0"
-                            nextMinor = "1"
-                            patch = "0"
+                            echo "Minor is not integer, defaulting to 1"
                         }
                     } else {
-                        // Dacă nu există tag-uri sau tag-ul nu respectă formatul x.y.z
-                        echo "No valid tags found. Using default version 0.1.0."
-                        major = "0"
-                        minor = "0"
-                        nextMinor = "1"
-                        patch = "0"
+                        echo "Invalid or missing tag. Using default version 0.1.0"
                     }
 
                     env.MAJOR_VERSION = major
@@ -57,7 +47,8 @@ pipeline {
                     env.IMAGE_TAG = "${major}.${nextMinor}.${patch}"
 
                     echo "Generated tag: ${env.IMAGE_TAG}"
-                }
+
+            // Set the tag in the environment variable for later use       
             }
         }
 
