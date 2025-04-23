@@ -49,9 +49,9 @@ pipeline {
                     echo "Generated tag: ${env.IMAGE_TAG}"
 
             // Set the tag in the environment variable for later use       
+                }
             }
         }
-
 
         stage('Build Docker Image') {
             steps {
