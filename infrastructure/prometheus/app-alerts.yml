@@ -36,3 +36,21 @@ groups:
         annotations:
           summary: Increased response time {{ $labels.value}} {{ $value }}
           description: "Response time for availability checks \n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+      - alert: CRITICAL-MemoryFailure
+        expr: container_memory_failures_total > 600
+        for: 5s
+        labels:
+          severity: critical
+        annotations:
+          summary: Increased memory failure {{ $labels.value}} {{ $value }}
+          description: "Memory failures \n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+        
+      - alert: CRITICAL-ComponentDown
+        expr: booking_availability_check_time_seconds_count > 20
+        for: 5s
+        labels:
+          severity: critical
+        annotations:
+          summary: Componenet Down {{ $labels.value}} {{ $value }}
+          description: "Component down \n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
