@@ -1,77 +1,83 @@
-# Prerequisites
+# Booking Management System
 
-For using Github Codespaces, no prerequisites are mandatory.
-Follow the [./PREREQUISITES.md](./PREREQUISITES.md) instructions to configure a local virtual machine with Ubuntu, Docker, IntelliJ.
+## Descriere
+Acest proiect este un sistem de gestionare a rezervărilor pentru apartamente, în care utilizatorii pot rezerva apartamente, adăuga recenzii, și interacționa cu recenziile lăsând "like" și "dislike". De asemenea, se poate verifica disponibilitatea unui apartament pe o perioadă de timp.
 
-# Access the code
+### Functionalități:
+- Crearea și gestionarea apartamentelor
+- Rezervarea unui apartament
+- Crearea recenziilor pentru apartamente
+- Adăugarea de like-uri și dislike-uri la recenzii
+- Verificarea disponibilității unui apartament pe o perioadă de timp
 
-* Fork the code GitHub repository under your Organization
-  * https://github.com/UNIBUC-PROD-ENGINEERING/service
-* Clone the code repository:
-  * git@github.com:YOUR_ORG_NAME/service.git
+## Entități și relații
 
-# Run code in Github Codespaces
+### 1. **UserEntity (Utilizator)**
 
-* Make sure that the Github repository is forked under your account / Organization
-* Create a new Codespace from your forked repository
-* Wait for the Codespace to be up and running
-* Check java version
-  * ```java -version``` should return 21
-  * Validate Java version is properly configured in devcontainer.json
-  * If the correct Java version is set in devcontainer.json, but the command returns a different version:
-    * Open Command Palette (Ctrl+Shift+P) and run `Rebuild Container`
-    * Wait for the container to be rebuilt, and if the Java version is still incorrect, try a full rebuild or set it manually in the terminal:
-      * ```sdk default java 21.0.5-ms```
-* Make sure that Docker service has been started
-    * ```docker ps``` should return no error
-* For running all services in docker:
-    * Build the docker image of the hello world service
-        * ```make build```
-    * Start all the service containers
-        * ```./start.sh```
-* For running / debugging directly in Visual Studio Code
-  * Build and run the Spring Boot service
-    * ```./gradlew build```
-    * ```./gradlew bootRun```
-  * Start the MongoDB related services
-      * ```./start_mongo_only.sh```
-* Use [requests.http](requests.http) to test API endpoints
-* Navigation between methods (e.g. 'Go to Definition') may require:
-  * ```./gradlew build``` 
+Entitatea `UserEntity` reprezintă un utilizator din sistem. Un utilizator poate crea recenzii și poate face rezervări.
 
-NOTE: for a live demo, please check out [this youtube video](https://youtu.be/-9ePlxz03kg)
+**Atribute**:
+- `id`: ID-ul unic al utilizatorului.
+- `name`: Numele utilizatorului.
+- `email`: Adresa de email a utilizatorului.
+- `apartments`: Lista de apartamente pe care utilizatorul le-a închiriat.
 
-# Run/debug code in IntelliJ
-* Build the code
-    * IntelliJ will build it automatically
-    * If you want to build it from command line and also run unit tests, run: ```./gradlew build```
-* Create an IntelliJ run configuration for a Jar application
-    * Add in the configuration the JAR path to the build folder `./build/libs/hello-0.0.1-SNAPSHOT.jar`
-* Start the MongoDB container using docker compose
-    * ```docker-compose up -d mongo```
-* Run/debug your IntelliJ run configuration
-* Open in your browser:
-    * http://localhost:8080/hello-world
-    * http://localhost:8080/info
+### 2. **ApartmentEntity (Apartament)**
 
-# Deploy and run the code locally as docker instance
+Entitatea `ApartmentEntity` reprezintă un apartament disponibil în sistem. Apartamentele sunt gestionate de utilizatori și pot avea recenzii și rezervări.
 
-* Build the docker image of the hello world service
-    * ```make build```
-* Start all the containers
-    * ```./start.sh```
+**Atribute**:
+- `id`: ID-ul unic al apartamentului.
+- `title`: Titlul apartamentului.
+- `location`: Locația apartamentului.
+- `pricePerNight`: Prețul pe noapte al apartamentului.
+- `userId`: ID-ul utilizatorului care deține apartamentul.
+- `bookings`: Lista de rezervări asociate acestui apartament.
+- `reviews`: Lista de recenzii ale acestui apartament.
+- `numberOfRooms`: Numărul de camere.
+- `numberOfBathrooms`: Numărul de băi.
+- `amenities`: Lista de facilități (ex. Wi-Fi, TV, balcon etc.).
+- `squareMeters`: Suprafața apartamentului.
+- `smokingAllowed`: Indică dacă fumatul este permis în apartament.
+- `petFriendly`: Indică dacă sunt permise animalele de companie.
 
-* Verify that all containers started, by running
-  ```
-  service git:(master) ✗  $ docker ps
-  CONTAINER ID   IMAGE           COMMAND                  CREATED         STATUS         PORTS                      NAMES
-  c1d05dddd3fe   mongo:5.0.2     "docker-entrypoint.s…"   6 seconds ago   Up 5 seconds   0.0.0.0:27017->27017/tcp   service_mongo_1
-  e90bb406c139   hello-img       "java -jar /hello/li…"   6 seconds ago   Up 5 seconds   0.0.0.0:8080->8080/tcp     service_hello_1
-  411475a7b596   mongo-express   "tini -- /docker-ent…"   6 seconds ago   Up 2 seconds   0.0.0.0:8090->8081/tcp     service_mongo-admin-ui_1
-  ```
-* Open in your browser:
-    * http://localhost:8080/hello-world
-    * http://localhost:8080/info
-* You can test other API endpoints using [requests.http](requests.http)
-* You can access the MongoDB Admin UI at:
-  * http://localhost:8090 
+### 3. **BookingEntity (Rezervare)**
+
+Entitatea `BookingEntity` reprezintă o rezervare făcută de un utilizator pentru un apartament.
+
+**Atribute**:
+- `id`: ID-ul unic al rezervării.
+- `apartmentId`: ID-ul apartamentului rezervat.
+- `userId`: ID-ul utilizatorului care a făcut rezervarea.
+- `startDate`: Data de început a rezervării.
+- `endDate`: Data de sfârșit a rezervării.
+
+### 4. **ReviewEntity (Recenzie)**
+
+Entitatea `ReviewEntity` reprezintă o recenzie lăsată de un utilizator pentru un apartament.
+
+**Atribute**:
+- `id`: ID-ul unic al recenziei.
+- `apartmentId`: ID-ul apartamentului pentru care a fost lăsată recenzia.
+- `userId`: ID-ul utilizatorului care a lăsat recenzia.
+- `rating`: Rating-ul acordat (de la 1 la 5).
+- `comment`: Comentariul recenziei.
+- `likes`: Lista utilizatorilor care au dat like acestei recenzii.
+- `dislikes`: Lista utilizatorilor care au dat dislike acestei recenzii.
+
+## Funcționalități principale
+
+### 1. **Crearea unui apartament**
+   - Utilizatorii pot crea apartamente, definind detalii precum locația, prețul pe noapte, numărul de camere, facilități și altele.
+
+### 2. **Crearea unei rezervări**
+   - Utilizatorii pot rezerva un apartament pentru o perioadă specifică, doar dacă sunt autentificați și dacă apartamentul este disponibil în acea perioadă.
+
+### 3. **Crearea unei recenzii**
+   - După ce un utilizator a făcut o rezervare, poate lăsa o recenzie pentru apartamentul respectiv, adăugând un rating și un comentariu.
+
+### 4. **Interacțiunea cu recenziile**
+   - Utilizatorii pot adăuga "like" și "dislike" la recenzii, iar un utilizator nu poate adăuga ambele acțiuni pentru aceeași recenzie.
+
+### 5. **Verificarea disponibilității unui apartament**
+   - Utilizatorii pot verifica dacă un apartament este disponibil într-o perioadă dată, pe baza rezervărilor existente.
