@@ -36,7 +36,6 @@ groups:
         annotations:
           summary: Increased response time {{ $labels.value}} {{ $value }}
           description: "Response time for availability checks \n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
-
       - alert: CRITICAL-MemoryFailure
         expr: container_memory_failures_total > 600
         for: 5s
@@ -46,6 +45,7 @@ groups:
           summary: Increased memory failure {{ $labels.value}} {{ $value }}
           description: "Memory failures \n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
         
+        
       - alert: CRITICAL-ComponentDown
         expr: booking_availability_check_time_seconds_count > 20
         for: 5s
@@ -54,3 +54,30 @@ groups:
         annotations:
           summary: Componenet Down {{ $labels.value}} {{ $value }}
           description: "Component down \n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+  
+      - alert: CRITICAL-ServiceDown
+        expr: up{instance="hello:8080", job="spring-hello-app"} == 0
+        for: 5s 
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service is down"
+          description: "The Spring Hello App is not available for more than 5 minutes. VALUE = {{ $value }}\nLABELS = {{ $labels }}"
+
+      - alert: WARNING-HighBookingFailureRate
+        expr: sum(rate(booking_creation_attempts_total{application="booking-service", instance="hello:8080", job="spring-hello-app", type="failure"}[1m])) / sum(rate(booking_creation_attempts_total{application="booking-service", instance="hello:8080", job="spring-hello-app"}[1m])) > 0.05
+        for: 5s
+        labels:
+          severity: warning
+        annotations:
+          summary: "High failure rate detected for booking creation"
+          description: "More than 5% of booking creation attempts have failed. VALUE = {{ $value }}\nLABELS = {{ $labels }}"
+
+      - alert: CRITICAL-SlowBookingCreationCheck
+        expr: booking_controller_create_time_seconds_max > 0.0015
+        for: 5s
+        labels:
+          severity: critical
+        annotations:
+          summary: Increased response time {{ $labels.value}} {{ $value }}
+          description: "Response time for booking creation \n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"

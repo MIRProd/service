@@ -99,6 +99,10 @@ public class BookingService {
         }
     }
 
+public void triggerBookingFailure() {
+        bookingCreationFailures.increment();  // Incrementăm contorul de erori
+    }
+
     public void deleteBooking(String id) {
         meterRegistry.counter("booking.deletions").increment();
         bookingRepository.deleteById(id);
